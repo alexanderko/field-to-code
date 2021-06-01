@@ -31,6 +31,11 @@ type Action
     | Hit
 
 
+actionToolbox : List Action
+actionToolbox =
+    [ TornClockwise, TornCounterCw, Step, Hit ]
+
+
 type alias Script =
     List Action
 
@@ -48,7 +53,7 @@ stepAndHit =
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( Model stepAndHit ( [], stepAndHit ), scheduleTick )
+    ( Model stepAndHit ( [], stepAndHit ), Cmd.none )
 
 
 type Msg
@@ -89,9 +94,11 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     div []
-        [ actionsView (model.run |> first)
+        [ actionsView (model.run |> Tuple.first)
         , hr [] []
-        , actionsView (model.run |> second)
+        , actionsView (model.run |> Tuple.second)
+        , hr [] []
+        , actionsView actionToolbox
         ]
 
 
