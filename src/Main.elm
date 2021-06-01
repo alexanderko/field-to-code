@@ -109,13 +109,13 @@ toString : Action -> String
 toString action =
     case action of
         TornClockwise ->
-            "Clockwise"
+            "↻"
 
         TornCounterCw ->
-            "CounterCw"
+            "↺"
 
         Step ->
-            "Step"
+            "⬆️"
 
         Hit ->
-            "Hit"
+            "⚔️"
