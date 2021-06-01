@@ -1,19 +1,20 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (..)
-import Html.Attributes exposing (action)
+import Css exposing (..)
+import Html
+import Html.Styled exposing (..)
+import Html.Styled.Attributes exposing (css)
 import Process
 import Task exposing (perform)
-import Tuple exposing (first)
-import Tuple exposing (second)
+import Tuple
 
 
 main : Program () Model Msg
 main =
     Browser.element
         { init = init
-        , view = view
+        , view = view >> toUnstyled
         , update = update
         , subscriptions = subscriptions
         }
@@ -104,12 +105,23 @@ view model =
 
 actionsView : Script -> Html Msg
 actionsView actions =
-    ul [] (List.map actionView actions)
+    div [] (List.map actionView actions)
 
 
 actionView : Action -> Html Msg
 actionView action =
-    li [] [ action |> toString |> text ]
+    span
+        [ css
+            [ border3 (px 1) solid (hex "#999")
+            , backgroundColor (hex "#eee")
+            , borderRadius (px 5)
+            , padding (px 4)
+            , margin (px 4)
+            , fontSize (px 20)
+            , cursor pointer
+            ]
+        ]
+        [ action |> toString |> text ]
 
 
 toString : Action -> String
