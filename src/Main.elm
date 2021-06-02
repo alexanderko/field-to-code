@@ -114,10 +114,10 @@ actionsView actions =
 
 toolboxView : Toolbox -> Html Msg
 toolboxView actions =
-    div [] (List.map (\a -> actionView [ onClick (AddAction a) ] a) actions)
+    div [] (List.map (actionView [ onClick << AddAction ] ) actions)
 
 
-actionView : List (Attribute Msg) -> Action -> Html Msg
+actionView : List (Action -> Attribute Msg) -> Action -> Html Msg
 actionView attrs action =
     button
         (css
@@ -131,7 +131,7 @@ actionView attrs action =
             , hover
                 [ borderColor (hex "#240536") ]
             ]
-            :: attrs
+            :: List.map ((|>) action) attrs
         )
         [ action |> toString |> text ]
 
