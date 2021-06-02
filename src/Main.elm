@@ -41,6 +41,10 @@ type alias Script =
     List Action
 
 
+type alias Toolbox =
+    List Action
+
+
 type alias Model =
     { script : Script
     , run : ( Script, Script )
@@ -99,12 +103,19 @@ view model =
         , hr [] []
         , actionsView (model.run |> Tuple.second)
         , hr [] []
-        , actionsView actionToolbox
+        , actionsView model.script
+        , hr [] []
+        , toolboxView actionToolbox
         ]
 
 
 actionsView : Script -> Html Msg
 actionsView actions =
+    div [] (List.map actionView actions)
+
+
+toolboxView : Toolbox -> Html Msg
+toolboxView actions =
     div [] (List.map actionView actions)
 
 
@@ -119,6 +130,9 @@ actionView action =
             , margin (px 4)
             , fontSize (px 20)
             , cursor pointer
+            , hover
+                [ borderColor (hex "#240536")
+                ]
             ]
         ]
         [ action |> toString |> text ]
