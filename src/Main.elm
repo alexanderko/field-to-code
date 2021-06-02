@@ -1,10 +1,13 @@
 module Main exposing (main)
 
+import Array exposing (Array, push, toList)
 import Browser
 import Css exposing (..)
 import Html
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css)
+import Html.Styled.Events exposing (onClick)
+import List
 import Process
 import Task exposing (perform)
 import Tuple
@@ -38,7 +41,7 @@ actionToolbox =
 
 
 type alias Script =
-    List Action
+    Array Action
 
 
 type alias Toolbox =
@@ -47,23 +50,19 @@ type alias Toolbox =
 
 type alias Model =
     { script : Script
-    , run : ( Script, Script )
+    , run : ( List Action, List Action )
     }
-
-
-stepAndHit : Script
-stepAndHit =
-    [ Step, Hit ]
 
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( Model stepAndHit ( [], stepAndHit ), Cmd.none )
+    ( Model Array.empty ( [], [] ), Cmd.none )
 
 
 type Msg
     = StartGame
     | Tick
+    | AddAction Action
 
 
 scheduleTick : Cmd Msg
@@ -75,8 +74,11 @@ scheduleTick =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        AddAction a ->
+            ( { model | script = push a model.script }, Cmd.none )
+
         StartGame ->
-            ( { model | run = ( [], model.script ) }, scheduleTick )
+            ( { model | run = ( [], toList model.script ) }, scheduleTick )
 
         Tick ->
             case model.run of
@@ -99,11 +101,7 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     div []
-        [ actionsView (model.run |> Tuple.first)
-        , hr [] []
-        , actionsView (model.run |> Tuple.second)
-        , hr [] []
-        , actionsView model.script
+        [ actionsView model.script
         , hr [] []
         , toolboxView actionToolbox
         ]
@@ -111,18 +109,18 @@ view model =
 
 actionsView : Script -> Html Msg
 actionsView actions =
-    div [] (List.map actionView actions)
+    div [] (List.map (actionView []) (toList actions))
 
 
 toolboxView : Toolbox -> Html Msg
 toolboxView actions =
-    div [] (List.map actionView actions)
+    div [] (List.map (\a -> actionView [ onClick (AddAction a) ] a) actions)
 
 
-actionView : Action -> Html Msg
-actionView action =
-    span
-        [ css
+actionView : List (Attribute Msg) -> Action -> Html Msg
+actionView attrs action =
+    button
+        (css
             [ border3 (px 1) solid (hex "#999")
             , backgroundColor (hex "#eee")
             , borderRadius (px 5)
@@ -131,10 +129,10 @@ actionView action =
             , fontSize (px 20)
             , cursor pointer
             , hover
-                [ borderColor (hex "#240536")
-                ]
+                [ borderColor (hex "#240536") ]
             ]
-        ]
+            :: attrs
+        )
         [ action |> toString |> text ]
 
 
