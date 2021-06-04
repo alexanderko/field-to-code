@@ -1,16 +1,13 @@
 module Main exposing (main)
 
-import Array exposing (Array, push, toList)
+import Array exposing (Array)
 import Browser
 import Css exposing (..)
-import Html
 import Html.Styled exposing (..)
-import Html.Styled.Attributes exposing (css)
 import Html.Styled.Events exposing (onClick)
 import List
 import Process
 import Task exposing (perform)
-import Tuple
 
 
 main : Program () Model Msg
@@ -41,28 +38,80 @@ actionToolbox =
 
 
 type alias Script =
-    Array Action
+    Array RemovableAction
+
+
+type RemovableAction
+    = Present Action
+    | Removed
+
+
+push : Action -> Script -> Script
+push action script =
+    Array.push (Present action) script
+
+
+removeAt : Int -> Script -> Script
+removeAt index script =
+    Array.set index Removed script
+
+
+toScript : List Action -> Script
+toScript =
+    List.map Present >> Array.fromList
+
+
+toList : Script -> List Action
+toList script =
+    Array.foldr addPresent [] script
+
+
+toIndexedPresent : Script -> List ( Int, Action )
+toIndexedPresent script =
+    script
+        |> Array.toIndexedList
+        |> List.filterMap toMaybeIndexedAction
+
+
+toMaybeIndexedAction : ( Int, RemovableAction ) -> Maybe ( Int, Action )
+toMaybeIndexedAction ( index, removable ) =
+    case removable of
+        Present action ->
+            Just ( index, action )
+
+        Removed ->
+            Nothing
+
+
+addPresent : RemovableAction -> List Action -> List Action
+addPresent removable list =
+    case removable of
+        Present action ->
+            action :: list
+
+        Removed ->
+            list
 
 
 type alias Toolbox =
     List Action
 
 
-type alias Model =
-    { script : Script
-    , run : ( List Action, List Action )
-    }
+type Model
+    = Edit Script
+    | Run ( List Action, List Action )
 
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( Model Array.empty ( [], [] ), Cmd.none )
+    ( Edit Array.empty, Cmd.none )
 
 
 type Msg
     = StartGame
     | Tick
     | AddAction Action
+    | Remove Int
 
 
 scheduleTick : Cmd Msg
@@ -73,24 +122,26 @@ scheduleTick =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        AddAction a ->
-            ( { model | script = push a model.script }, Cmd.none )
+    case ( msg, model ) of
+        ( AddAction a, Edit script ) ->
+            ( Edit (push a script), Cmd.none )
 
-        StartGame ->
-            ( { model | run = ( [], toList model.script ) }, scheduleTick )
+        ( Remove index, Edit script ) ->
+            ( Edit (removeAt index script), Cmd.none )
 
-        Tick ->
-            case model.run of
-                ( _, [] ) ->
-                    ( model, Cmd.none )
+        ( StartGame, Edit script ) ->
+            ( Run ( [], toList script ), scheduleTick )
+
+        ( Tick, Run run ) ->
+            case run of
+                ( done, [] ) ->
+                    ( Edit (toScript done), Cmd.none )
 
                 ( done, current :: next ) ->
-                    let
-                        run =
-                            ( current :: done, next )
-                    in
-                    ( { model | run = run }, scheduleTick )
+                    ( Run ( current :: done, next ), scheduleTick )
+
+        ( _, _ ) ->
+            Debug.todo "hadle bad (msg|model) combination"
 
 
 subscriptions : Model -> Sub Msg
@@ -100,40 +151,56 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ actionsView model.script
-        , hr [] []
-        , toolboxView actionToolbox
-        ]
+    case model of
+        Edit script ->
+            div []
+                [ scriptView script
+                , hr [] []
+                , toolboxView actionToolbox
+                ]
+
+        Run _ ->
+            Debug.todo "handle runnig game view"
 
 
-actionsView : Script -> Html Msg
-actionsView actions =
-    div [] (List.map (actionView []) (toList actions))
+scriptView : Script -> Html Msg
+scriptView script =
+    script
+        |> toIndexedPresent
+        |> List.map removableActionView
+        |> div []
+
+
+removableActionView : ( Int, Action ) -> Html Msg
+removableActionView ( index, action ) =
+    styledAction [ onClick (Remove index) ]
+        [ action |> toString |> text ]
 
 
 toolboxView : Toolbox -> Html Msg
 toolboxView actions =
-    div [] (List.map (actionView [ onClick << AddAction ] ) actions)
+    div [] (List.map toolboxActionView actions)
 
 
-actionView : List (Action -> Attribute Msg) -> Action -> Html Msg
-actionView attrs action =
-    button
-        (css
-            [ border3 (px 1) solid (hex "#999")
-            , backgroundColor (hex "#eee")
-            , borderRadius (px 5)
-            , padding (px 4)
-            , margin (px 4)
-            , fontSize (px 20)
-            , cursor pointer
-            , hover
-                [ borderColor (hex "#240536") ]
-            ]
-            :: List.map ((|>) action) attrs
-        )
+toolboxActionView : Action -> Html Msg
+toolboxActionView action =
+    styledAction [ onClick (AddAction action) ]
         [ action |> toString |> text ]
+
+
+styledAction : List (Attribute Msg) -> List (Html Msg) -> Html Msg
+styledAction =
+    styled button
+        [ border3 (px 1) solid (hex "#999")
+        , backgroundColor (hex "#eee")
+        , borderRadius (px 5)
+        , padding (px 4)
+        , margin (px 4)
+        , fontSize (px 20)
+        , cursor pointer
+        , hover
+            [ borderColor (hex "#240536") ]
+        ]
 
 
 toString : Action -> String
