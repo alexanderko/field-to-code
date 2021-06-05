@@ -1,8 +1,8 @@
 module Main exposing (main)
 
-import Array exposing (Array)
 import Browser
 import Css exposing (..)
+import DropList
 import Html.Styled exposing (..)
 import Html.Styled.Events exposing (onClick)
 import List
@@ -38,60 +38,10 @@ actionToolbox =
 
 
 type alias Script =
-    Array RemovableAction
-
-
-type RemovableAction
-    = Present Action
-    | Removed
-
-
-push : Action -> Script -> Script
-push action script =
-    Array.push (Present action) script
-
-
-removeAt : Int -> Script -> Script
-removeAt index script =
-    Array.set index Removed script
-
-
-toScript : List Action -> Script
-toScript =
-    List.map Present >> Array.fromList
-
-
-toList : Script -> List Action
-toList script =
-    Array.foldr addPresent [] script
-
-
-toIndexedPresent : Script -> List ( Int, Action )
-toIndexedPresent script =
-    script
-        |> Array.toIndexedList
-        |> List.filterMap toMaybeIndexedAction
-
-
-toMaybeIndexedAction : ( Int, RemovableAction ) -> Maybe ( Int, Action )
-toMaybeIndexedAction ( index, removable ) =
-    case removable of
-        Present action ->
-            Just ( index, action )
-
-        Removed ->
-            Nothing
-
-
-addPresent : RemovableAction -> List Action -> List Action
-addPresent removable list =
-    case removable of
-        Present action ->
-            action :: list
-
-        Removed ->
-            list
-
+    DropList.DropList Action
+    
+type alias ActionItem =
+  DropList.Item Action
 
 type alias Toolbox =
     List Action
@@ -104,14 +54,14 @@ type Model
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( Edit Array.empty, Cmd.none )
+    ( Edit DropList.empty, Cmd.none )
 
 
 type Msg
     = StartGame
     | Tick
     | AddAction Action
-    | Remove Int
+    | Remove ActionItem
 
 
 scheduleTick : Cmd Msg
@@ -124,18 +74,18 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model ) of
         ( AddAction a, Edit script ) ->
-            ( Edit (push a script), Cmd.none )
+            ( Edit (DropList.push a script), Cmd.none )
 
-        ( Remove index, Edit script ) ->
-            ( Edit (removeAt index script), Cmd.none )
+        ( Remove item, Edit script ) ->
+            ( Edit (DropList.remove item script), Cmd.none )
 
         ( StartGame, Edit script ) ->
-            ( Run ( [], toList script ), scheduleTick )
+            ( Run ( [], DropList.toValueList script ), scheduleTick )
 
         ( Tick, Run run ) ->
             case run of
                 ( done, [] ) ->
-                    ( Edit (toScript done), Cmd.none )
+                    ( Edit (DropList.fromList done), Cmd.none )
 
                 ( done, current :: next ) ->
                     ( Run ( current :: done, next ), scheduleTick )
@@ -165,16 +115,14 @@ view model =
 
 scriptView : Script -> Html Msg
 scriptView script =
-    script
-        |> toIndexedPresent
-        |> List.map removableActionView
-        |> div []
+    div [] 
+        (DropList.mapToList removableActionView script)
 
 
-removableActionView : ( Int, Action ) -> Html Msg
-removableActionView ( index, action ) =
-    styledAction [ onClick (Remove index) ]
-        [ action |> toString |> text ]
+removableActionView : ActionItem -> Html Msg
+removableActionView item =
+    styledAction [ onClick (Remove item) ]
+        [ item |> DropList.getValue |> toString |> text ]
 
 
 toolboxView : Toolbox -> Html Msg
