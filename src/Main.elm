@@ -26,15 +26,14 @@ type Rotation
 
 
 type Action
-    = TornClockwise
-    | TornCounterCw
+    = Turn Rotation
     | Step
     | Hit
 
 
 actionToolbox : List Action
 actionToolbox =
-    [ TornClockwise, TornCounterCw, Step, Hit ]
+    [ Turn Clockwise, Turn CounterCw, Step, Hit ]
 
 
 type alias Script =
@@ -154,11 +153,13 @@ styledAction =
 toString : Action -> String
 toString action =
     case action of
-        TornClockwise ->
-            "↻"
+        Turn rotation  ->
+            case rotation of
+                Clockwise -> 
+                    "↻"
 
-        TornCounterCw ->
-            "↺"
+                CounterCw ->
+                    "↺"
 
         Step ->
             "⬆️"
