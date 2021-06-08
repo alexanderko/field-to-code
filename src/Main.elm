@@ -38,17 +38,52 @@ actionToolbox =
 
 type alias Script =
     DropList.DropList Action
-    
+
 type alias ActionItem =
-  DropList.Item Action
+    DropList.Item Action
 
 type alias Toolbox =
     List Action
 
 
+type alias Unit =
+    { coord : Coord
+    , direction : Direction
+    }
+
+
+type Direction
+    = Up
+    | Right
+    | Down
+    | Left
+
+
+type alias Coord =
+    ( Int, Int )
+
+
+type alias RunningScript =
+    ( List Action, Maybe Action, List Action )
+
+
+type Game
+    = Game Unit
+
+
+runScript : Script -> RunningScript
+runScript script =
+    ( [], Nothing, DropList.toValueList script )
+
+
+newGame : Game
+newGame =
+    Game { coord = ( 1, 1 ), direction = Up }
+
+
 type Model
     = Edit Script
-    | Run ( List Action, List Action )
+    | Run RunningScript Game
 
 
 init : flags -> ( Model, Cmd Msg )
@@ -79,18 +114,55 @@ update msg model =
             ( Edit (DropList.remove item script), Cmd.none )
 
         ( StartGame, Edit script ) ->
-            ( Run ( [], DropList.toValueList script ), scheduleTick )
+            ( Run (runScript script) newGame, scheduleTick )
 
-        ( Tick, Run run ) ->
-            case run of
-                ( done, [] ) ->
-                    ( Edit (DropList.fromList done), Cmd.none )
+        ( Tick, Run script game ) ->
+            let
+                nextScript =
+                    getNext script
 
-                ( done, current :: next ) ->
-                    ( Run ( current :: done, next ), scheduleTick )
+                ( _, curr, _ ) =
+                    nextScript
+            in
+            case curr of
+                Nothing ->
+                    ( edit nextScript, Cmd.none )
+
+                Just action ->
+                    ( Run nextScript (updateGame action game), scheduleTick )
 
         ( _, _ ) ->
             Debug.todo "hadle bad (msg|model) combination"
+
+
+edit : RunningScript -> Model
+edit ( done, _, _ ) =
+    Edit <| DropList.fromList <| done
+
+
+getNext : RunningScript -> RunningScript
+getNext script =
+    let
+        ( done, maybePrev, rest ) =
+            script
+    in
+    case ( maybePrev, rest ) of
+        ( Nothing, curr :: next ) ->
+            ( [], Just curr, next )
+
+        ( Just prev, curr :: next ) ->
+            ( done ++ [ prev ], Just curr, next )
+
+        ( Just prev, [] ) ->
+            ( done ++ [ prev ], Nothing, [] )
+
+        ( Nothing, [] ) ->
+            script
+
+
+updateGame : Action -> Game -> Game
+updateGame action (Game unit) =
+    Game unit
 
 
 subscriptions : Model -> Sub Msg
@@ -108,13 +180,13 @@ view model =
                 , toolboxView actionToolbox
                 ]
 
-        Run _ ->
+        Run _ _ ->
             Debug.todo "handle runnig game view"
 
 
 scriptView : Script -> Html Msg
 scriptView script =
-    div [] 
+    div []
         (DropList.mapToList removableActionView script)
 
 
@@ -155,7 +227,7 @@ toString action =
     case action of
         Turn rotation  ->
             case rotation of
-                Clockwise -> 
+                Clockwise ->
                     "↻"
 
                 CounterCw ->
