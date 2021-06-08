@@ -39,8 +39,10 @@ actionToolbox =
 type alias Script =
     DropList.DropList Action
 
+
 type alias ActionItem =
     DropList.Item Action
+
 
 type alias Toolbox =
     List Action
@@ -225,7 +227,7 @@ styledAction =
 toString : Action -> String
 toString action =
     case action of
-        Turn rotation  ->
+        Turn rotation ->
             case rotation of
                 Clockwise ->
                     "↻"
