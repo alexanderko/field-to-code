@@ -4,6 +4,7 @@ import Browser
 import Css exposing (..)
 import DropList
 import Html.Styled exposing (..)
+import Html.Styled.Attributes exposing (css)
 import Html.Styled.Events exposing (onClick)
 import List
 import Process
@@ -180,10 +181,11 @@ view model =
                 [ scriptView script
                 , hr [] []
                 , toolboxView actionToolbox
+                , button [ onClick StartGame ] [ text "Start" ]
                 ]
 
-        Run _ _ ->
-            Debug.todo "handle runnig game view"
+        Run script _ ->
+            runningScriptView script
 
 
 scriptView : Script -> Html Msg
@@ -206,6 +208,31 @@ toolboxView actions =
 toolboxActionView : Action -> Html Msg
 toolboxActionView action =
     styledAction [ onClick (AddAction action) ]
+        [ action |> toString |> text ]
+
+
+runningScriptView : RunningScript -> Html Msg
+runningScriptView script =
+    let
+        ( done, curr, rest ) =
+            script
+    in
+    div [] <|
+        List.concat
+            [ done
+                |> List.map (runActionView <| css [ opacity (num 0.5) ])
+            , curr
+                |> Maybe.map (runActionView <| css [ borderColor (rgb 0 255 0), borderWidth (px 5) ])
+                |> Maybe.map List.singleton
+                |> Maybe.withDefault []
+            , rest
+                |> List.map (runActionView <| css [])
+            ]
+
+
+runActionView : Attribute Msg -> Action -> Html Msg
+runActionView styles action =
+    styledAction [ styles ]
         [ action |> toString |> text ]
 
 
