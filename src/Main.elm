@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Css exposing (..)
+import Direction exposing (Direction(..), Rotation(..))
 import DropList
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css)
@@ -21,11 +22,6 @@ main =
         }
 
 
-type Rotation
-    = Clockwise
-    | CounterCw
-
-
 type Action
     = Turn Rotation
     | Step
@@ -34,7 +30,7 @@ type Action
 
 actionToolbox : List Action
 actionToolbox =
-    [ Turn Clockwise, Turn CounterCw, Step, Hit ]
+    [ Turn CounterCw, Step, Turn Clockwise, Hit ]
 
 
 type alias Script =
@@ -53,13 +49,6 @@ type alias Unit =
     { coord : Coord
     , direction : Direction
     }
-
-
-type Direction
-    = Up
-    | Right
-    | Down
-    | Left
 
 
 type alias Coord =
@@ -164,8 +153,18 @@ getNext script =
 
 
 updateGame : Action -> Game -> Game
-updateGame action (Game unit) =
-    Game unit
+updateGame action (Game player) =
+    case action of
+        Turn rotation ->
+            Game (turnUnit rotation player)
+
+        _ ->
+            Game player
+
+
+turnUnit : Rotation -> Unit -> Unit
+turnUnit rotation unit =
+    { unit | direction = Direction.turn rotation unit.direction }
 
 
 subscriptions : Model -> Sub Msg
@@ -184,8 +183,11 @@ view model =
                 , button [ onClick StartGame ] [ text "Start" ]
                 ]
 
-        Run script _ ->
-            runningScriptView script
+        Run script (Game player) ->
+            div []
+                [ player.direction |> Direction.toString |> text
+                , runningScriptView script
+                ]
 
 
 scriptView : Script -> Html Msg
