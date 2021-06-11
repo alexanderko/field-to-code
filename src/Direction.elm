@@ -1,4 +1,4 @@
-module Direction exposing (Direction(..), Rotation(..), toString, turn)
+module Direction exposing (Direction(..), Rotation(..), toInt, toString, turn)
 
 import Array exposing (Array)
 

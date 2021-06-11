@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Css exposing (..)
+import Css.Transitions exposing (transition)
 import Direction exposing (Direction(..), Rotation(..))
 import DropList
 import Html.Styled exposing (..)
@@ -185,9 +186,26 @@ view model =
 
         Run script (Game player) ->
             div []
-                [ player.direction |> Direction.toString |> text
+                [ span [ playerCss player ] [ text "🐞" ]
                 , runningScriptView script
                 ]
+
+
+playerCss : Unit -> Attribute Msg
+playerCss player =
+    let
+        aggle =
+            player.direction
+                |> Direction.toInt
+                |> toFloat
+                |> (*) 90.0
+    in
+    css
+        [ fontSize (px 84)
+        , transition [ Css.Transitions.transform 1000 ]
+        , display inlineBlock
+        , transform (rotate (deg aggle))
+        ]
 
 
 scriptView : Script -> Html Msg
