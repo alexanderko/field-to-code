@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Coord exposing (Coord)
 import Css exposing (..)
 import Css.Transitions exposing (transition)
 import Direction exposing (Direction(..), Rotation(..))
@@ -52,10 +53,6 @@ type alias Unit =
     }
 
 
-type alias Coord =
-    ( Int, Int )
-
-
 type alias RunningScript =
     ( List Action, Maybe Action, List Action )
 
@@ -93,7 +90,7 @@ type Msg
 
 scheduleTick : Cmd Msg
 scheduleTick =
-    Process.sleep (2 * 1000)
+    Process.sleep theme.duration
         |> perform (always Tick)
 
 
@@ -159,8 +156,16 @@ updateGame action (Game player) =
         Turn rotation ->
             Game (turnUnit rotation player)
 
+        Step ->
+            Game (moveUnit player)
+
         _ ->
             Game player
+
+
+moveUnit : Unit -> Unit
+moveUnit unit =
+    { unit | coord = Coord.move unit.direction unit.coord }
 
 
 turnUnit : Rotation -> Unit -> Unit
@@ -186,9 +191,27 @@ view model =
 
         Run script (Game player) ->
             div []
-                [ span [ playerCss player ] [ text "🐞" ]
+                [ div
+                    [ css
+                        [ position relative
+                        , width (mulCellSize 3)
+                        , height (mulCellSize 3)
+                        ]
+                    ]
+                    [ span [ playerCss player ] [ text "🐾" ]
+                    ]
                 , runningScriptView script
                 ]
+
+
+mulCellSize : Int -> Px
+mulCellSize factor =
+    theme.cellSize * factor |> toFloat |> px
+
+
+theme : { cellSize : Int, duration : Float }
+theme =
+    { cellSize = 100, duration = 1000 }
 
 
 playerCss : Unit -> Attribute Msg
@@ -202,9 +225,22 @@ playerCss player =
     in
     css
         [ fontSize (px 84)
-        , transition [ Css.Transitions.transform 1000 ]
-        , display inlineBlock
+        , transition
+            [ Css.Transitions.transform theme.duration
+            , Css.Transitions.left theme.duration
+            , Css.Transitions.bottom theme.duration
+            ]
+        , position absolute
+        , toCellOffset player.coord
         , transform (rotate (deg aggle))
+        ]
+
+
+toCellOffset : Coord -> Css.Style
+toCellOffset ( x, y ) =
+    Css.batch
+        [ left (mulCellSize x)
+        , bottom (mulCellSize y)
         ]
 
 
