@@ -174,7 +174,7 @@ turnUnit rotation unit =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
@@ -183,25 +183,31 @@ view model =
     case model of
         Edit script ->
             div []
-                [ scriptView script
+                [ gameView newGame
+                , scriptView script
                 , hr [] []
                 , toolboxView actionToolbox
                 , button [ onClick StartGame ] [ text "Start" ]
                 ]
 
-        Run script (Game player) ->
+        Run script game ->
             div []
-                [ div
-                    [ css
-                        [ position relative
-                        , width (mulCellSize 3)
-                        , height (mulCellSize 3)
-                        ]
-                    ]
-                    [ span [ playerCss player ] [ text "🐾" ]
-                    ]
+                [ gameView game
                 , runningScriptView script
                 ]
+
+
+gameView : Game -> Html Msg
+gameView (Game player) =
+    div
+        [ css
+            [ position relative
+            , width (mulCellSize 3)
+            , height (mulCellSize 3)
+            ]
+        ]
+        [ span [ playerCss player ] [ text "🐾" ]
+        ]
 
 
 mulCellSize : Int -> Px
