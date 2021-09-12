@@ -1,8 +1,8 @@
 module DropListTest exposing (..)
 
 import DropList
-import Expect exposing (Expectation)
-import Fuzz exposing (Fuzzer, int, list, string)
+import Expect
+import Fuzz exposing (int, list)
 import Test exposing (..)
 
 

@@ -1,7 +1,7 @@
 module Coord exposing (Coord, move)
 
 import Direction exposing (Direction(..))
-import Tuple exposing (mapBoth, mapFirst, mapSecond)
+import Tuple exposing (mapFirst, mapSecond)
 
 
 type alias Coord =

@@ -1,6 +1,6 @@
 module CoordTest exposing (..)
 
-import Coord exposing (Coord)
+import Coord
 import Direction exposing (Direction(..))
 import Expect
 import Test exposing (..)
