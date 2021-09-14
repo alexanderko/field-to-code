@@ -57,8 +57,8 @@ type alias RunningScript =
     ( List Action, Maybe Action, List Action )
 
 
-type Game
-    = Game Unit
+type alias Game =
+    { player : Unit }
 
 
 runScript : Script -> RunningScript
@@ -151,7 +151,7 @@ getNext script =
 
 
 updateGame : Action -> Game -> Game
-updateGame action (Game player) =
+updateGame action { player } =
     case action of
         Turn rotation ->
             Game (turnUnit rotation player)
@@ -198,7 +198,7 @@ view model =
 
 
 gameView : Game -> Html Msg
-gameView (Game player) =
+gameView { player } =
     div
         [ css
             [ position relative
