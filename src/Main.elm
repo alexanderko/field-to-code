@@ -58,7 +58,17 @@ type alias RunningScript =
 
 
 type alias Game =
-    { player : Unit }
+    { player : Unit
+    , effects : List Effect
+    }
+
+
+type EffectIcon
+    = HitIcon
+
+
+type Effect
+    = CellEffect EffectIcon Coord
 
 
 runScript : Script -> RunningScript
@@ -68,7 +78,9 @@ runScript script =
 
 newGame : Game
 newGame =
-    Game { coord = ( 1, 1 ), direction = Up }
+    { player = Unit ( 1, 1 ) Up
+    , effects = []
+    }
 
 
 type Model
@@ -151,21 +163,47 @@ getNext script =
 
 
 updateGame : Action -> Game -> Game
-updateGame action { player } =
+updateGame action game =
+    game
+        |> clearEffects
+        |> applyAction action
+
+
+clearEffects : Game -> Game
+clearEffects game =
+    { game | effects = [] }
+
+
+applyAction : Action -> Game -> Game
+applyAction action game =
     case action of
         Turn rotation ->
-            Game (turnUnit rotation player)
+            { game | player = turnUnit rotation game.player }
 
         Step ->
-            Game (moveUnit player)
+            { game | player = moveUnit game.player }
 
-        _ ->
-            Game player
+        Hit ->
+            applyPlayerHit game
+
+
+applyPlayerHit : Game -> Game
+applyPlayerHit game =
+    let
+        effect =
+            CellEffect HitIcon (getUnitTargetCoord game.player)
+    in
+    { game | effects = effect :: game.effects }
 
 
 moveUnit : Unit -> Unit
 moveUnit unit =
-    { unit | coord = Coord.move unit.direction unit.coord }
+    { unit | coord = getUnitTargetCoord unit }
+
+
+getUnitTargetCoord : Unit -> Coord
+getUnitTargetCoord unit =
+    Coord.move unit.direction unit.coord
 
 
 turnUnit : Rotation -> Unit -> Unit
@@ -198,7 +236,7 @@ view model =
 
 
 gameView : Game -> Html Msg
-gameView { player } =
+gameView { player, effects } =
     div
         [ css
             [ position relative
@@ -206,8 +244,21 @@ gameView { player } =
             , height (mulCellSize 3)
             ]
         ]
-        [ span [ playerCss player ] [ text "🐾" ]
+        (span [ playerCss player ] [ text "🐾" ]
+            :: List.map effectView effects
+        )
+
+
+effectView : Effect -> Html Msg
+effectView (CellEffect _ coord) =
+    span
+        [ css
+            [ fontSize (px 84)
+            , position absolute
+            , toCellOffset coord
+            ]
         ]
+        [ text "⚔️" ]
 
 
 mulCellSize : Int -> Px
