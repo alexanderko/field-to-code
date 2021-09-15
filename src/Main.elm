@@ -54,6 +54,7 @@ type alias RunningScript =
 
 type alias Game =
     { player : Unit
+    , enemy : Unit
     , effects : List Effect
     }
 
@@ -73,7 +74,8 @@ runScript script =
 
 newGame : Game
 newGame =
-    { player = Unit ( 1, 1 ) Up
+    { enemy = Unit ( 1, 2 ) Up
+    , player = Unit ( 1, 0 ) Up
     , effects = []
     }
 
@@ -216,7 +218,7 @@ view model =
 
 
 gameView : Game -> Html Msg
-gameView { player, effects } =
+gameView { enemy, player, effects } =
     div
         [ css
             [ position relative
@@ -224,8 +226,10 @@ gameView { player, effects } =
             , height (mulCellSize 3)
             ]
         ]
-        (span [ playerCss player ] [ text "🐾" ]
-            :: List.map effectView effects
+        ([ span [ unitCss player ] [ text "🐾" ]
+         , span [ unitCss enemy ] [ text "🐲" ]
+         ]
+            ++ List.map effectView effects
         )
 
 
@@ -251,11 +255,11 @@ theme =
     { cellSize = 100, duration = 1000 }
 
 
-playerCss : Unit -> Attribute Msg
-playerCss player =
+unitCss : Unit -> Attribute Msg
+unitCss unit =
     let
         aggle =
-            player.direction
+            unit.direction
                 |> Direction.toInt
                 |> toFloat
                 |> (*) 90.0
@@ -268,7 +272,7 @@ playerCss player =
             , Css.Transitions.bottom theme.duration
             ]
         , position absolute
-        , toCellOffset player.coord
+        , toCellOffset unit.coord
         , transform (rotate (deg aggle))
         ]
 
