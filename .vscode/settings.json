@@ -1,0 +1,7 @@
+{
+    "files.exclude": {
+        "elm-stuff": true
+    },
+    "editor.formatOnSave": true,
+    "elmLS.onlyUpdateDiagnosticsOnSave": true
+}
