@@ -12,6 +12,7 @@ import Html.Styled.Events exposing (onClick)
 import List
 import Process
 import Task exposing (perform)
+import Unit exposing (Unit)
 
 
 main : Program () Model Msg
@@ -45,12 +46,6 @@ type alias ActionItem =
 
 type alias Toolbox =
     List Action
-
-
-type alias Unit =
-    { coord : Coord
-    , direction : Direction
-    }
 
 
 type alias RunningScript =
@@ -178,10 +173,10 @@ applyAction : Action -> Game -> Game
 applyAction action game =
     case action of
         Turn rotation ->
-            { game | player = turnUnit rotation game.player }
+            { game | player = Unit.turnUnit rotation game.player }
 
         Step ->
-            { game | player = moveUnit game.player }
+            { game | player = Unit.move game.player }
 
         Hit ->
             applyPlayerHit game
@@ -191,24 +186,9 @@ applyPlayerHit : Game -> Game
 applyPlayerHit game =
     let
         effect =
-            CellEffect HitIcon (getUnitTargetCoord game.player)
+            CellEffect HitIcon (Unit.targetCoord game.player)
     in
     { game | effects = effect :: game.effects }
-
-
-moveUnit : Unit -> Unit
-moveUnit unit =
-    { unit | coord = getUnitTargetCoord unit }
-
-
-getUnitTargetCoord : Unit -> Coord
-getUnitTargetCoord unit =
-    Coord.move unit.direction unit.coord
-
-
-turnUnit : Rotation -> Unit -> Unit
-turnUnit rotation unit =
-    { unit | direction = Direction.turn rotation unit.direction }
 
 
 subscriptions : Model -> Sub Msg
