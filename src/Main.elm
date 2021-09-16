@@ -56,7 +56,14 @@ type alias Game =
     { player : Unit
     , enemy : Unit
     , effects : List Effect
+    , state : GameState
     }
+
+
+type GameState
+    = Pending
+    | Loose
+    | Win
 
 
 type EffectIcon
@@ -77,17 +84,19 @@ newGame =
     { enemy = Unit ( 1, 2 ) Up
     , player = Unit ( 1, 0 ) Up
     , effects = []
+    , state = Pending
     }
 
 
 type Model
-    = Edit Script
+    = Editing Script
     | Run RunningScript Game
+    | GameEnd RunningScript Game
 
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( Edit DropList.empty, Cmd.none )
+    ( Editing DropList.empty, Cmd.none )
 
 
 type Msg
@@ -95,6 +104,7 @@ type Msg
     | Tick
     | AddAction Action
     | Remove ActionItem
+    | Edit
 
 
 scheduleTick : Cmd Msg
@@ -106,13 +116,13 @@ scheduleTick =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case ( msg, model ) of
-        ( AddAction a, Edit script ) ->
-            ( Edit (DropList.push a script), Cmd.none )
+        ( AddAction a, Editing script ) ->
+            ( Editing (DropList.push a script), Cmd.none )
 
-        ( Remove item, Edit script ) ->
-            ( Edit (DropList.remove item script), Cmd.none )
+        ( Remove item, Editing script ) ->
+            ( Editing (DropList.remove item script), Cmd.none )
 
-        ( StartGame, Edit script ) ->
+        ( StartGame, Editing script ) ->
             ( Run (runScript script) newGame, scheduleTick )
 
         ( Tick, Run script game ) ->
@@ -125,18 +135,57 @@ update msg model =
             in
             case curr of
                 Nothing ->
-                    ( edit nextScript, Cmd.none )
+                    let
+                        finalGame =
+                            game
+                                |> clearEffects
+                                |> looseIfNotWin
+                    in
+                    ( GameEnd nextScript finalGame, Cmd.none )
 
                 Just action ->
-                    ( Run nextScript (updateGame action game), scheduleTick )
+                    let
+                        updatedGame =
+                            updateGame action game
+                    in
+                    if game.state == Pending then
+                        ( Run nextScript updatedGame, scheduleTick )
+
+                    else
+                        ( GameEnd nextScript updatedGame, Cmd.none )
+
+        ( Edit, GameEnd script _ ) ->
+            ( edit script, Cmd.none )
 
         ( _, _ ) ->
             Debug.todo "hadle bad (msg|model) combination"
 
 
+looseIfNotWin : Game -> Game
+looseIfNotWin game =
+    if game.state == Win then
+        game
+
+    else
+        { game | state = Loose }
+
+
 edit : RunningScript -> Model
-edit ( done, _, _ ) =
-    Edit <| DropList.fromList <| done
+edit ( done, action, rest ) =
+    let
+        actions =
+            List.concat
+                [ done
+                , action |> maybeToList
+                , rest
+                ]
+    in
+    Editing (DropList.fromList actions)
+
+
+maybeToList : Maybe a -> List a
+maybeToList =
+    Maybe.map List.singleton >> Maybe.withDefault []
 
 
 getNext : RunningScript -> RunningScript
@@ -163,12 +212,40 @@ updateGame : Action -> Game -> Game
 updateGame action game =
     game
         |> clearEffects
-        |> applyAction action
+        |> when stateIsPending (applyAction action)
+
+
+when : (Game -> Bool) -> (Game -> Game) -> Game -> Game
+when guard updateFn game =
+    if guard game then
+        updateFn game
+
+    else
+        game
+
+
+stateIsPending : Game -> Bool
+stateIsPending { state } =
+    state == Pending
 
 
 clearEffects : Game -> Game
 clearEffects game =
-    { game | effects = [] }
+    let
+        expectedHit =
+            CellEffect HitIcon game.enemy.coord
+
+        hitEnemy =
+            List.member expectedHit game.effects
+
+        state =
+            if hitEnemy then
+                Win
+
+            else
+                game.state
+    in
+    { game | effects = [], state = state }
 
 
 applyAction : Action -> Game -> Game
@@ -201,7 +278,7 @@ subscriptions _ =
 view : Model -> Html Msg
 view model =
     case model of
-        Edit script ->
+        Editing script ->
             div []
                 [ gameView newGame
                 , scriptView script
@@ -211,10 +288,33 @@ view model =
                 ]
 
         Run script game ->
-            div []
+            div
+                []
                 [ gameView game
                 , runningScriptView script
                 ]
+
+        GameEnd script game ->
+            div
+                []
+                [ gameView game
+                , runningScriptView script
+                , stateView game.state
+                , button [ onClick Edit ] [ text "Reset and edit" ]
+                ]
+
+
+stateView : GameState -> Html Msg
+stateView state =
+    case state of
+        Pending ->
+            div [] []
+
+        Loose ->
+            div [ css [ fontSize (px 32), color (rgb 200 0 0) ] ] [ text "You lost!" ]
+
+        Win ->
+            div [ css [ fontSize (px 32), color (rgb 0 200 0) ] ] [ text "You won!" ]
 
 
 gameView : Game -> Html Msg
@@ -319,7 +419,7 @@ runningScriptView script =
             [ done
                 |> List.map (runActionView <| css [ opacity (num 0.5) ])
             , curr
-                |> Maybe.map (runActionView <| css [ borderColor (rgb 0 255 0), borderWidth (px 5) ])
+                |> Maybe.map (runActionView <| css [ borderColor (rgb 0 255 0), borderWidth (px 1), boxShadow3 (px 0) (px 0) (px 4) ])
                 |> Maybe.map List.singleton
                 |> Maybe.withDefault []
             , rest
