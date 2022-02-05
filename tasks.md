@@ -3,7 +3,6 @@
 ## Todo
 
 ### Enemy
-* Show enemy on field
 * Send and display enemy effects
 
 ### Game logic
@@ -18,6 +17,9 @@
 ## In Progress
 
 ## Done
+
+### 2021-09-17
+* Show enemy on field
 
 ### 2021-09-15
 * Effects

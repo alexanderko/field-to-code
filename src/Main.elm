@@ -6,6 +6,7 @@ import Css exposing (..)
 import Css.Transitions exposing (transition)
 import Direction exposing (Direction(..), Rotation(..))
 import DropList
+import Game exposing (..)
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css)
 import Html.Styled.Events exposing (onClick)
@@ -23,12 +24,6 @@ main =
         , update = update
         , subscriptions = subscriptions
         }
-
-
-type Action
-    = Turn Rotation
-    | Step
-    | Hit
 
 
 actionToolbox : List Action
@@ -52,28 +47,6 @@ type alias RunningScript =
     ( List Action, Maybe Action, List Action )
 
 
-type alias Game =
-    { player : Unit
-    , enemy : Unit
-    , effects : List Effect
-    , state : GameState
-    }
-
-
-type GameState
-    = Pending
-    | Loose
-    | Win
-
-
-type EffectIcon
-    = HitIcon
-
-
-type Effect
-    = CellEffect EffectIcon Coord
-
-
 runScript : Script -> RunningScript
 runScript script =
     ( [], Nothing, DropList.toValueList script )
@@ -81,11 +54,14 @@ runScript script =
 
 newGame : Game
 newGame =
-    { enemy = Unit ( 1, 2 ) Up
-    , player = Unit ( 1, 0 ) Up
-    , effects = []
-    , state = Pending
-    }
+    let
+        enemy =
+            Unit ( 1, 2 ) Up
+
+        player =
+            Unit ( 1, 0 ) Up
+    in
+    buildNewGame enemy player
 
 
 type Model
@@ -161,15 +137,6 @@ update msg model =
             Debug.todo "hadle bad (msg|model) combination"
 
 
-looseIfNotWin : Game -> Game
-looseIfNotWin game =
-    if game.state == Win then
-        game
-
-    else
-        { game | state = Loose }
-
-
 edit : RunningScript -> Model
 edit ( done, action, rest ) =
     let
@@ -206,68 +173,6 @@ getNext script =
 
         ( Nothing, [] ) ->
             script
-
-
-updateGame : Action -> Game -> Game
-updateGame action game =
-    game
-        |> clearEffects
-        |> when stateIsPending (applyAction action)
-
-
-when : (Game -> Bool) -> (Game -> Game) -> Game -> Game
-when guard updateFn game =
-    if guard game then
-        updateFn game
-
-    else
-        game
-
-
-stateIsPending : Game -> Bool
-stateIsPending { state } =
-    state == Pending
-
-
-clearEffects : Game -> Game
-clearEffects game =
-    let
-        expectedHit =
-            CellEffect HitIcon game.enemy.coord
-
-        hitEnemy =
-            List.member expectedHit game.effects
-
-        state =
-            if hitEnemy then
-                Win
-
-            else
-                game.state
-    in
-    { game | effects = [], state = state }
-
-
-applyAction : Action -> Game -> Game
-applyAction action game =
-    case action of
-        Turn rotation ->
-            { game | player = Unit.turnUnit rotation game.player }
-
-        Step ->
-            { game | player = Unit.move game.player }
-
-        Hit ->
-            applyPlayerHit game
-
-
-applyPlayerHit : Game -> Game
-applyPlayerHit game =
-    let
-        effect =
-            CellEffect HitIcon (Unit.targetCoord game.player)
-    in
-    { game | effects = effect :: game.effects }
 
 
 subscriptions : Model -> Sub Msg
