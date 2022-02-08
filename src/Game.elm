@@ -1,4 +1,4 @@
-module Game exposing (..)
+module Game exposing (Action(..), Effect(..), EffectIcon(..), Game, GameState(..), buildNewGame, clearEffects, looseIfNotWin, updateGame)
 
 import Coord exposing (Coord)
 import Direction exposing (Rotation)
@@ -27,6 +27,7 @@ type GameState
 
 type EffectIcon
     = HitIcon
+    | FireIcon
 
 
 type Effect
@@ -56,6 +57,29 @@ updateGame action game =
     game
         |> clearEffects
         |> when stateIsPending (applyAction action)
+        |> when (always (not (isTurn action))) doEnemyHit
+
+
+isTurn : Action -> Bool
+isTurn action =
+    case action of
+        Turn _ ->
+            True
+
+        _ ->
+            False
+
+
+doEnemyHit : Game -> Game
+doEnemyHit game =
+    { game | effects = game.effects ++ enemyHit }
+
+
+enemyHit : List Effect
+enemyHit =
+    [ CellEffect FireIcon ( 1, 0 )
+    , CellEffect FireIcon ( 1, 1 )
+    ]
 
 
 when : (Game -> Bool) -> (Game -> Game) -> Game -> Game
@@ -72,21 +96,35 @@ stateIsPending { state } =
     state == Pending
 
 
+deriveNewStateFromEffects : Game -> GameState
+deriveNewStateFromEffects game =
+    if effectsUnit .player FireIcon game then
+        Loose
+
+    else if effectsUnit .enemy HitIcon game then
+        Win
+
+    else
+        Pending
+
+
+effectsUnit : (Game -> Unit) -> EffectIcon -> Game -> Bool
+effectsUnit getUnit icon game =
+    let
+        unit =
+            getUnit game
+
+        expectedEffect =
+            CellEffect icon unit.coord
+    in
+    List.member expectedEffect game.effects
+
+
 clearEffects : Game -> Game
 clearEffects game =
     let
-        expectedHit =
-            CellEffect HitIcon game.enemy.coord
-
-        hitEnemy =
-            List.member expectedHit game.effects
-
         state =
-            if hitEnemy then
-                Win
-
-            else
-                game.state
+            deriveNewStateFromEffects game
     in
     { game | effects = [], state = state }
 

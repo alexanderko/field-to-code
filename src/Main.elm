@@ -239,7 +239,7 @@ gameView { enemy, player, effects } =
 
 
 effectView : Effect -> Html Msg
-effectView (CellEffect _ coord) =
+effectView (CellEffect icon coord) =
     span
         [ css
             [ fontSize (px 84)
@@ -247,7 +247,17 @@ effectView (CellEffect _ coord) =
             , toCellOffset coord
             ]
         ]
-        [ text "⚔️" ]
+        [ text (effectEmoji icon) ]
+
+
+effectEmoji : EffectIcon -> String
+effectEmoji icon =
+    case icon of
+        FireIcon ->
+            "🔥"
+
+        HitIcon ->
+            "⚔️"
 
 
 mulCellSize : Int -> Px
