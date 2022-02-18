@@ -52,19 +52,38 @@ runScript script =
     ( [], Nothing, DropList.toValueList script )
 
 
-newGame : Game
-newGame =
-    let
-        enemy =
-            Unit ( 1, 2 ) Up
-
-        player =
-            Unit ( 1, 0 ) Up
-    in
-    buildNewGame enemy player
+newGame : Level -> Game
+newGame (BasicLevel gameSetup) =
+    buildNewGame gameSetup
 
 
-type Model
+level_01 : Level
+level_01 =
+    BasicLevel
+        { enemy = Unit ( 1, 2 ) Up
+        , enemyAction =
+            EnemyHit
+                (\_ ->
+                    [ CellEffect FireIcon ( 1, 0 )
+                    , CellEffect FireIcon ( 1, 1 )
+                    ]
+                )
+        , player = Unit ( 1, 0 ) Up
+        }
+
+
+type alias LevelNumber =
+    Int
+
+
+type alias Model =
+    { state : LevelState
+    , levelNumber : LevelNumber
+    , level : Level
+    }
+
+
+type LevelState
     = Editing Script
     | Run RunningScript Game
     | GameEnd RunningScript Game
@@ -72,7 +91,12 @@ type Model
 
 init : flags -> ( Model, Cmd Msg )
 init _ =
-    ( Editing DropList.empty, Cmd.none )
+    ( { levelNumber = 1
+      , level = level_01
+      , state = Editing DropList.empty
+      }
+    , Cmd.none
+    )
 
 
 type Msg
@@ -91,7 +115,16 @@ scheduleTick =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( msg, model ) of
+    let
+        ( state, cmd ) =
+            updateLevelState msg model
+    in
+    ( { model | state = state }, cmd )
+
+
+updateLevelState : Msg -> Model -> ( LevelState, Cmd Msg )
+updateLevelState msg model =
+    case ( msg, model.state ) of
         ( AddAction a, Editing script ) ->
             ( Editing (DropList.push a script), Cmd.none )
 
@@ -99,7 +132,7 @@ update msg model =
             ( Editing (DropList.remove item script), Cmd.none )
 
         ( StartGame, Editing script ) ->
-            ( Run (runScript script) newGame, scheduleTick )
+            ( Run (runScript script) (newGame model.level), scheduleTick )
 
         ( Tick, Run script game ) ->
             let
@@ -137,7 +170,7 @@ update msg model =
             Debug.todo "hadle bad (msg|model) combination"
 
 
-edit : RunningScript -> Model
+edit : RunningScript -> LevelState
 edit ( done, action, rest ) =
     let
         actions =
@@ -182,10 +215,10 @@ subscriptions _ =
 
 view : Model -> Html Msg
 view model =
-    case model of
+    case model.state of
         Editing script ->
             div []
-                [ gameView newGame
+                [ gameView (newGame model.level)
                 , scriptView script
                 , hr [] []
                 , toolboxView actionToolbox

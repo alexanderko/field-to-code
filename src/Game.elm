@@ -1,4 +1,16 @@
-module Game exposing (Action(..), Effect(..), EffectIcon(..), Game, GameState(..), buildNewGame, clearEffects, looseIfNotWin, updateGame)
+module Game exposing
+    ( Action(..)
+    , Effect(..)
+    , EffectIcon(..)
+    , EnemyAction(..)
+    , Game
+    , GameState(..)
+    , Level(..)
+    , buildNewGame
+    , clearEffects
+    , looseIfNotWin
+    , updateGame
+    )
 
 import Coord exposing (Coord)
 import Direction exposing (Rotation)
@@ -14,6 +26,7 @@ type Action
 type alias Game =
     { player : Unit
     , enemy : Unit
+    , enemyAction : EnemyAction
     , effects : List Effect
     , state : GameState
     }
@@ -34,10 +47,11 @@ type Effect
     = CellEffect EffectIcon Coord
 
 
-buildNewGame : Unit -> Unit -> Game
-buildNewGame enemy player =
-    { enemy = enemy
-    , player = player
+buildNewGame : GameSetup -> Game
+buildNewGame setup =
+    { enemy = setup.enemy
+    , enemyAction = setup.enemyAction
+    , player = setup.player
     , effects = []
     , state = Pending
     }
@@ -72,14 +86,9 @@ isTurn action =
 
 doEnemyHit : Game -> Game
 doEnemyHit game =
-    { game | effects = game.effects ++ enemyHit }
-
-
-enemyHit : List Effect
-enemyHit =
-    [ CellEffect FireIcon ( 1, 0 )
-    , CellEffect FireIcon ( 1, 1 )
-    ]
+    case game.enemyAction of
+        EnemyHit hitFn ->
+            { game | effects = game.effects ++ hitFn game }
 
 
 when : (Game -> Bool) -> (Game -> Game) -> Game -> Game
@@ -149,3 +158,18 @@ applyPlayerHit game =
             CellEffect HitIcon (Unit.targetCoord game.player)
     in
     { game | effects = effect :: game.effects }
+
+
+type EnemyAction
+    = EnemyHit (Game -> List Effect)
+
+
+type alias GameSetup =
+    { enemy : Unit
+    , enemyAction : EnemyAction
+    , player : Unit
+    }
+
+
+type Level
+    = BasicLevel GameSetup
