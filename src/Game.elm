@@ -5,11 +5,10 @@ module Game exposing
     , EnemyAction(..)
     , Game
     , GameState(..)
-    , Level(..)
     , buildNewGame
     , clearEffects
     , looseIfNotWin
-    , updateGame
+    , updateGame, GameSetup
     )
 
 import Coord exposing (Coord)
@@ -86,9 +85,17 @@ isTurn action =
 
 doEnemyHit : Game -> Game
 doEnemyHit game =
+    { game | effects = game.effects ++ getHitEffects game }
+
+
+getHitEffects : Game -> List Effect
+getHitEffects game =
     case game.enemyAction of
-        EnemyHit hitFn ->
-            { game | effects = game.effects ++ hitFn game }
+        HitCalculated hitFn ->
+            hitFn game
+
+        HitStatic effects ->
+            effects
 
 
 when : (Game -> Bool) -> (Game -> Game) -> Game -> Game
@@ -161,7 +168,8 @@ applyPlayerHit game =
 
 
 type EnemyAction
-    = EnemyHit (Game -> List Effect)
+    = HitStatic (List Effect)
+    | HitCalculated (Game -> List Effect)
 
 
 type alias GameSetup =
@@ -169,7 +177,3 @@ type alias GameSetup =
     , enemyAction : EnemyAction
     , player : Unit
     }
-
-
-type Level
-    = BasicLevel GameSetup

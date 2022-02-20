@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Array exposing (Array)
 import Browser
 import Coord exposing (Coord)
 import Css exposing (..)
@@ -10,6 +11,7 @@ import Game exposing (..)
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css)
 import Html.Styled.Events exposing (onClick)
+import Level exposing (Level)
 import List
 import Process
 import Task exposing (perform)
@@ -52,26 +54,6 @@ runScript script =
     ( [], Nothing, DropList.toValueList script )
 
 
-newGame : Level -> Game
-newGame (BasicLevel gameSetup) =
-    buildNewGame gameSetup
-
-
-level_01 : Level
-level_01 =
-    BasicLevel
-        { enemy = Unit ( 1, 2 ) Up
-        , enemyAction =
-            EnemyHit
-                (\_ ->
-                    [ CellEffect FireIcon ( 1, 0 )
-                    , CellEffect FireIcon ( 1, 1 )
-                    ]
-                )
-        , player = Unit ( 1, 0 ) Up
-        }
-
-
 type alias LevelNumber =
     Int
 
@@ -79,6 +61,8 @@ type alias LevelNumber =
 type alias Model =
     { state : LevelState
     , levelNumber : LevelNumber
+    , totalLevels : LevelNumber
+    , levels : Array Level
     , level : Level
     }
 
@@ -92,11 +76,18 @@ type LevelState
 init : flags -> ( Model, Cmd Msg )
 init _ =
     ( { levelNumber = 1
-      , level = level_01
-      , state = Editing DropList.empty
+      , level = Level.level_01
+      , totalLevels = Array.length Level.levels
+      , levels = Level.levels
+      , state = initialLevelState
       }
     , Cmd.none
     )
+
+
+initialLevelState : LevelState
+initialLevelState =
+    Editing DropList.empty
 
 
 type Msg
@@ -105,6 +96,7 @@ type Msg
     | AddAction Action
     | Remove ActionItem
     | Edit
+    | GoNextLevel
 
 
 scheduleTick : Cmd Msg
@@ -115,11 +107,32 @@ scheduleTick =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        ( state, cmd ) =
-            updateLevelState msg model
-    in
-    ( { model | state = state }, cmd )
+    case msg of
+        GoNextLevel ->
+            let
+                nextLevelNumber =
+                    model.levelNumber + 1
+
+                nextLevel =
+                    model.levels
+                        -- need 0 based index, so number - 1
+                        |> Array.get (nextLevelNumber - 1)
+                        |> Maybe.withDefault Level.level_01
+            in
+            ( { model
+                | levelNumber = nextLevelNumber
+                , level = nextLevel
+                , state = initialLevelState
+              }
+            , Cmd.none
+            )
+
+        _ ->
+            let
+                ( state, cmd ) =
+                    updateLevelState msg model
+            in
+            ( { model | state = state }, cmd )
 
 
 updateLevelState : Msg -> Model -> ( LevelState, Cmd Msg )
@@ -132,7 +145,7 @@ updateLevelState msg model =
             ( Editing (DropList.remove item script), Cmd.none )
 
         ( StartGame, Editing script ) ->
-            ( Run (runScript script) (newGame model.level), scheduleTick )
+            ( Run (runScript script) (Level.newGame model.level), scheduleTick )
 
         ( Tick, Run script game ) ->
             let
@@ -215,10 +228,32 @@ subscriptions _ =
 
 view : Model -> Html Msg
 view model =
+    div []
+        [ h1 [] [ text "Field to Code. The Coding Game" ]
+        , levelNameView model.levelNumber model.level
+        , levelStateView model
+        ]
+
+
+levelNameView : LevelNumber -> Level -> Html Msg
+levelNameView levelNumber level =
+    h2 []
+        [ [ "Level "
+          , String.fromInt levelNumber
+          , ": "
+          , Level.getName level
+          ]
+            |> String.concat
+            |> text
+        ]
+
+
+levelStateView : Model -> Html Msg
+levelStateView model =
     case model.state of
         Editing script ->
             div []
-                [ gameView (newGame model.level)
+                [ gameView (Level.newGame model.level)
                 , scriptView script
                 , hr [] []
                 , toolboxView actionToolbox
@@ -239,7 +274,28 @@ view model =
                 , runningScriptView script
                 , stateView game.state
                 , button [ onClick Edit ] [ text "Reset and edit" ]
+                , button [ onClick GoNextLevel ] [ text "Go to next level" ]
+                    |> when (canGoNextLevel model)
                 ]
+
+
+when : Bool -> Html msg -> Html msg
+when condition nodeToShow =
+    if condition then
+        nodeToShow
+
+    else
+        text ""
+
+
+canGoNextLevel : Model -> Bool
+canGoNextLevel model =
+    case model.state of
+        GameEnd _ game ->
+            game.state == Win && model.levelNumber < model.totalLevels
+
+        _ ->
+            False
 
 
 stateView : GameState -> Html Msg

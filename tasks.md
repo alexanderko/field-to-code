@@ -10,6 +10,9 @@
 
 ## Done
 
+### 2022-02-20
+* Support multiple levels
+
 ### 2022-02-09
 * Send and display enemy effects
 * Derive game result from player and enemy state
